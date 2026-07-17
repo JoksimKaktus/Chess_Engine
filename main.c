@@ -1,0 +1,236 @@
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <stdio.h>
+#include <string.h>
+
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 640;
+char *curBoard = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+
+int init();
+int loadMedia();
+void closeWindow();
+
+void drawBoard();
+void drawPieces();
+void drawPiece();
+
+
+SDL_Surface* loadSurface( char* path );
+
+//The window we'll be rendering to
+SDL_Window* gWindow = NULL;
+
+SDL_Renderer* gRenderer = NULL;
+
+SDL_Texture* piecesTexture = NULL;
+
+int init()
+{
+	//Initialization flag
+	int success = 1;
+
+	//Initialize SDL
+	if	( SDL_Init( SDL_INIT_VIDEO ) < 0 )	{
+		printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
+		success = 0;
+	}
+	else	{
+		//Create window
+		gWindow =
+			SDL_CreateWindow(
+				"SDL Tutorial"			,
+				SDL_WINDOWPOS_UNDEFINED	,
+				SDL_WINDOWPOS_UNDEFINED	,
+				SCREEN_WIDTH			,
+				SCREEN_HEIGHT			,
+				SDL_WINDOW_SHOWN
+			);
+
+		if	( gWindow == NULL )	{
+			printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
+			success = 0;
+		}
+		else	{
+			gRenderer = SDL_CreateRenderer( gWindow, -1, SDL_RENDERER_ACCELERATED );
+			if	( gRenderer == NULL )	{
+				printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+				success = 0;
+			}else	{
+				// Initialize renderer color
+				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+
+				if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+					printf("SDL_image could not initialize! %s\n", IMG_GetError());
+					return 0;
+				}
+			}
+		}
+	}
+
+	return success;
+}
+
+int loadMedia()
+{
+	//Loading success flag
+	int success = 1;
+
+	piecesTexture = IMG_LoadTexture(gRenderer, "images/pieces.png");
+	if (piecesTexture == NULL) {
+		printf("Unable to load texture! %s\n", IMG_GetError());
+	}
+	
+	return success;
+}
+
+void closeWindow()
+{
+	// Destroy window	
+	SDL_DestroyRenderer( gRenderer );
+	SDL_DestroyWindow( gWindow );
+	gWindow = NULL;
+	gRenderer = NULL;
+
+	// Quit SDL subsystems
+	IMG_Quit();
+	SDL_Quit();
+}
+
+void drawBoard(){
+	for(int i = 0;i < 8;i++){
+		for(int j = 0;j < 8;j++){
+			SDL_Rect fillRect = { SCREEN_WIDTH/8 * j, SCREEN_WIDTH/8 * i, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8 };
+			if((i + j) % 2 == 0){
+				SDL_SetRenderDrawColor( gRenderer, 250, 160, 90, 255 );     
+			}else{
+				SDL_SetRenderDrawColor( gRenderer, 165, 90, 30, 255 );
+			}        
+			SDL_RenderFillRect( gRenderer, &fillRect );
+		}
+	}
+}
+
+void drawPieces(){
+	int i = 0;
+	int j = 0;
+	int ind = 0;
+	while(!(i == 7 && j == 8)){
+		if(curBoard[ind] == '/'){
+			i++;
+			j = 0;
+		}else if(curBoard[ind] >= '0' && curBoard[ind] <= '9'){
+			j += curBoard[ind] - '0'; 
+		}else{
+			int color = 1;
+			char piece = curBoard[ind];
+			if(curBoard[ind] <= 'Z'){
+				color = 0;
+				piece += 'a' - 'A';
+			}
+			if(piece == 'p'){
+				drawPiece(5,color,j,i);
+			}else if(piece == 'r'){
+				drawPiece(4,color,j,i);
+			}else if(piece == 'n'){
+				drawPiece(3,color,j,i);
+			}else if(piece == 'b'){
+				drawPiece(2,color,j,i);
+			}else if(piece == 'q'){
+				drawPiece(1,color,j,i);
+			}else{
+				drawPiece(0,color,j,i);
+			}
+			j++;
+		}
+
+		ind++;
+	}
+	//rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+
+	// for(int i = 0;i < 8;i++){
+	// 	drawPiece(5, 0, i, 6);
+	// 	drawPiece(5, 1, i, 1);
+	// }
+	// for(int i = 0;i < 8;i+= 7){
+	// 	drawPiece(4, 1-i/7, 0, i);
+	// 	drawPiece(4, 1-i/7, 7, i);
+	// 	drawPiece(3, 1-i/7, 1, i);
+	// 	drawPiece(3, 1-i/7, 6, i);
+	// 	drawPiece(2, 1-i/7, 2, i);
+	// 	drawPiece(2, 1-i/7, 5, i);
+	// 	drawPiece(1, 1-i/7, 3, i);
+	// 	drawPiece(0, 1-i/7, 4, i);
+	// }
+}
+
+void drawPiece(int spriteX, int spriteY, int boardX, int boardY)
+{
+    SDL_Rect src = {
+        spriteX * 107,
+        spriteY * 107,
+        107,
+        107
+    };
+
+    int s = SCREEN_WIDTH / 8;
+
+    SDL_Rect dst = {
+        boardX * s,
+        boardY * s,
+        s,
+        s
+    };
+
+    SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
+}
+
+int main( int, char* [] )
+{
+	// Start up SDL and create window
+	if	( !init() )	{
+		printf( "Failed to initialize!\n" );
+	}
+	else	{
+		// Load media
+		if	( !loadMedia() )	{
+			printf( "Failed to load media!\n" );
+		}
+		else	{
+			int quit = 0;
+
+			// Event handler
+			SDL_Event e;
+
+			// While application is running
+			while ( !quit )
+			{
+				// Handle events on queue
+				while ( SDL_PollEvent( &e ) != 0 )	{
+					// User requests quit
+					if	( e.type == SDL_QUIT )	{
+						quit = 1;
+					}
+                    
+				}
+
+				//Clear screen
+                SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+                SDL_RenderClear( gRenderer );
+
+				drawBoard();
+				drawPieces();
+
+				// Update the surface
+				SDL_RenderPresent( gRenderer );
+			}
+		}
+	}
+
+	// Free resources and close SDL
+	closeWindow();
+
+	return 0;
+}
+// gcc main.c -I src/include -L src/lib -o main.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image
