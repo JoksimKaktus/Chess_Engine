@@ -112,44 +112,15 @@ void drawBoard(){
 }
 
 void drawPieces(){
-	int i = 0;
-	int j = 0;
-	int ind = 0;
-	while(!(i == 7 && j == 8)){
-		if(curBoard[ind] == '/'){
-			i++;
-			j = 0;
-		}else if(curBoard[ind] >= '0' && curBoard[ind] <= '9'){
-			j += curBoard[ind] - '0'; 
-		}else{
-			if (dragging && i == DragFromY && j == DragFromX){
-				j++;
-				ind++;
-				continue;
+	for(int i = 0;i < 8;i++){
+		for(int j = 0;j < 8;j++){
+			if(curBoard[i*8+j].type != 6){
+				if (dragging && i == DragFromY && j == DragFromX){
+					continue;
+				}
+				drawPiece(curBoard[i*8+j].type,curBoard[i*8+j].color,j,i);
 			}
-			int color = 1;
-			char piece = curBoard[ind];
-			if(curBoard[ind] <= 'Z'){
-				color = 0;
-				piece += 'a' - 'A';
-			}
-			if(piece == 'p'){
-				drawPiece(5,color,j,i);
-			}else if(piece == 'r'){
-				drawPiece(4,color,j,i);
-			}else if(piece == 'n'){
-				drawPiece(3,color,j,i);
-			}else if(piece == 'b'){
-				drawPiece(2,color,j,i);
-			}else if(piece == 'q'){
-				drawPiece(1,color,j,i);
-			}else{
-				drawPiece(0,color,j,i);
-			}
-			j++;
 		}
-
-		ind++;
 	}
 }
 
@@ -214,6 +185,8 @@ int main( int, char* [] )
 			// Event handler
 			SDL_Event e;
 
+			initBoard();
+
 			// While application is running
 			while ( !quit )
 			{
@@ -232,7 +205,7 @@ int main( int, char* [] )
 
 							// Check if clicked on a piece and remember the piece
 							if (piecesBitBoard & (1ULL << (DragFromY*8 + DragFromX)) ) {
-								dragedPiece = findPieceAt(DragFromX, DragFromY);
+								dragedPiece = curBoard[DragFromY*8 + DragFromX];
 								dragging = 1;
 							}
 						}
