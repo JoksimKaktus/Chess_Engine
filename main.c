@@ -3,22 +3,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "gui/boardUpdate.h"
+
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 640;
 
-typedef struct {
-    int type;  // 0 - king, 1 - queen, 2 - bishop, 3 - knight, 4 - rook, 5 - pawn
-    int color; // 0 - white, 1 - black
-} Piece;
-
-
-char curBoard[128] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR/";
-uint64_t piecesBitBoard = 0xFFFF00000000FFFF;
-
 int dragging = 0;
-int DragFromX, DragFromY;
 int mouseX, mouseY;
-Piece dragedPiece;
 
 int init();
 int loadMedia();
@@ -28,11 +19,6 @@ void drawBoard();
 void drawPieces(); // Drawing the pieces on the board
 void drawPiece(); // Draw one piece
 void drawDraggedPiece(); // Draw the piece onto the cursor
-Piece findPieceAt(); // Find the piece at coordinates(...)
-Piece findPieceByNotation(char c); // Find piece by its notation in FEN
-char findNotationByPiece();
-void updateBoard();
-
 
 SDL_Surface* loadSurface( char* path );
 SDL_Window* gWindow = NULL;
@@ -211,205 +197,16 @@ void drawDraggedPiece(int spriteX, int spriteY, int mouseX, int mouseY)
     SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
 }
 
-Piece findPieceAt(int boardX, int boardY){
-	int i = 0;
-	int j = 0;
-	int ind = 0;
-	while(!(i == 7 && j == 8)){
-		if(i == boardY && j == boardX){
-			break;
-		}
-		if(curBoard[ind] == '/'){
-			i++;
-			j = 0;
-		}else if(curBoard[ind] >= '0' && curBoard[ind] <= '9'){
-			j += curBoard[ind] - '0'; 
-		}else{
-			j++;
-		}
-
-		ind++;
-	}
-
-	return findPieceByNotation(curBoard[ind]);
-}
-
-Piece findPieceByNotation(char c){
-	int color = 1;
-	char piece = c;
-	if(c <= 'Z'){
-		color = 0;
-		piece += 'a' - 'A';
-	}
-	Piece ret = {0, color};
-	if(piece == 'p'){
-		ret.type = 5;
-	}else if(piece == 'r'){
-		ret.type = 4;
-	}else if(piece == 'n'){
-		ret.type = 3;
-	}else if(piece == 'b'){
-		ret.type = 2;
-	}else if(piece == 'q'){
-		ret.type = 1;
-	}
-	return ret;
-}
-
-char findNotationByPiece(Piece piece){
-	char ret = 'k';
-	if(piece.type == 5){
-		ret = 'p';
-	}else if(piece.type == 4){
-		ret = 'r';
-	}else if(piece.type == 3){
-		ret = 'n';
-	}else if(piece.type == 2){
-		ret = 'b';
-	}else if(piece.type == 1){
-		ret = 'q';
-	}
-	if(piece.color == 0){
-		ret -= 'a' - 'A';
-	}
-	
-	return ret;
-}
-
-void updateBoard(int toX, int toY){
-	piecesBitBoard ^= (1ULL << (DragFromY*8 + DragFromX));
-	piecesBitBoard |= (1ULL << (toY*8 + toX));
-
-	char newBoard[128] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-	int indOld = 0;
-	int indNew = 0;
-	for(int i = 0;i < 8;i++){
-		if(i != DragFromY){
-			while(curBoard[indOld] != '/'){
-				newBoard[indNew] = curBoard[indOld];
-				indNew++;
-				indOld++;
-			}
-			indOld++;
-		}else{
-			int j = 0;
-			int numBefore = 0;
-			int add = 0;
-			while(curBoard[indOld] != '/'){
-				if(j == DragFromX){
-					if(curBoard[indOld+1] >= '0' && curBoard[indOld+1] <= '9'){
-						if(numBefore){
-							newBoard[indNew-1] += curBoard[indOld+1] - '0' + 1;
-						}else{
-							newBoard[indNew] = curBoard[indOld+1] + 1;
-							indNew++;
-						}
-						j += curBoard[indOld] - '0';
-						indOld += 2;
-					}else{
-						if(numBefore){
-							newBoard[indNew-1] += 1;
-						}else{
-							newBoard[indNew] = '1';
-							indNew++;
-						}
-						indOld++;
-						j++;
-					}
-				}else{
-					if(curBoard[indOld] >= '0' && curBoard[indOld] <= '9'){
-						newBoard[indNew] = curBoard[indOld] + add;
-						j += curBoard[indOld] - '0';
-						numBefore = curBoard[indOld] - '0';
-						indNew++;
-						indOld++;
-					}else{
-						newBoard[indNew] = curBoard[indOld];
-						indNew++;
-						indOld++;
-						numBefore = 0;
-						j++;
-					}
-				}
-			}
-			indOld++;
-		}
-		newBoard[indNew] = '/';
-		indNew++;
-	}
-	newBoard[indNew] = '\0';
-	strcpy(curBoard, newBoard);
-	
-	strcpy(newBoard,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-	indOld = 0;
-	indNew = 0;
-	
-	for(int i = 0;i < 8;i++){
-		if(i != toY){
-			while(curBoard[indOld] != '/'){
-				newBoard[indNew] = curBoard[indOld];
-				indNew++;
-				indOld++;
-			}
-			indOld++;
-		}else{
-			int j = 0;
-			while(curBoard[indOld] != '/'){
-				if(curBoard[indOld] >= '0' && curBoard[indOld] <= '9'){
-					if(j <= toX && toX < j + curBoard[indOld] - '0'){
-						int before = toX - j;
-						int after = j + curBoard[indOld] - '0' - toX - 1;
-						if(before != 0){
-							newBoard[indNew] = '0' + before;
-							indNew++;
-						}
-						newBoard[indNew] = findNotationByPiece(dragedPiece);
-						indNew++;
-						if(after != 0){
-							newBoard[indNew] = '0' + after;
-							indNew++;
-						}
-						j += curBoard[indOld] - '0';
-						indOld++;
-					}else{
-						j += curBoard[indOld] - '0';
-						newBoard[indNew] = curBoard[indOld];
-						indOld++;
-						indNew++;
-					}
-				}else{
-					if(j == toX){
-						newBoard[indNew] = findNotationByPiece(dragedPiece);
-					}else{
-						newBoard[indNew] = curBoard[indOld];
-					}
-					indNew++;
-					indOld++;
-					j++;
-				}
-			}
-			indOld++;
-		}
-		newBoard[indNew] = '/';
-		indNew++;
-	}
-	newBoard[indNew] = '\0';
-	strcpy(curBoard, newBoard);
-
-
-	printf("\n\n%s\n\n", curBoard);
-}
-
 int main( int, char* [] )
 {
 	// Start up SDL and create window
 	if	( !init() )	{
-		printf( "Failed to initialize!\n" );
+		printf("Failed to initialize!\n");
 	}
 	else	{
 		// Load media
 		if	( !loadMedia() )	{
-			printf( "Failed to load media!\n" );
+			printf("Failed to load media!\n");
 		}
 		else	{
 			int quit = 0;
@@ -450,7 +247,6 @@ int main( int, char* [] )
 
 							// validate move TODO
 
-							// update board
 							updateBoard(toX,toY);
 
 							dragging = 0;
