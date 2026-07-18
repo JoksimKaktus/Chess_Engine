@@ -10,14 +10,17 @@ typedef struct {
     int color; // 0 - white, 1 - black
 } Piece;
 
-extern Piece curBoard[64];
-extern uint64_t piecesBitBoard;
-
-extern int DragFromX;
-extern int DragFromY;
-extern Piece dragedPiece;
+typedef struct {
+    int x;
+    int y;
+} Coordinates;
 
 void updateBoard(int toX, int toY);
 void initBoard();
+Piece getCurBoard(int x, int y);
+void setDragedPiece();
+Piece getDragedPiece();
+Coordinates setDragFrom(int x, int y);
+Coordinates getDragFrom();
 
 #endif

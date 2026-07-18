@@ -114,11 +114,12 @@ void drawBoard(){
 void drawPieces(){
 	for(int i = 0;i < 8;i++){
 		for(int j = 0;j < 8;j++){
-			if(curBoard[i*8+j].type != 6){
-				if (dragging && i == DragFromY && j == DragFromX){
+			if(getCurBoard(j,i).type != 6){
+				Coordinates dragFrom = getDragFrom(); 
+				if (dragging && i == dragFrom.y && j == dragFrom.x){
 					continue;
 				}
-				drawPiece(curBoard[i*8+j].type,curBoard[i*8+j].color,j,i);
+				drawPiece(getCurBoard(j,i).type,getCurBoard(j,i).color,j,i);
 			}
 		}
 	}
@@ -146,14 +147,15 @@ void drawPiece(int spriteX, int spriteY, int boardX, int boardY)
     SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
 }
 
-void drawDraggedPiece(int spriteX, int spriteY, int mouseX, int mouseY)
+void drawDraggedPiece(int mouseX, int mouseY)
 {
+	Piece piece = getDragedPiece();
     int squareSize = SCREEN_WIDTH / 8;
 
 	int size = 107;
 	SDL_Rect src = {
-        spriteX * size,
-        spriteY * size,
+        piece.type * size,
+        piece.color * size,
         size,
         size
     };
@@ -200,12 +202,13 @@ int main( int, char* [] )
 							mouseX = e.button.x;
 							mouseY = e.button.y;
 
-							DragFromX = mouseX / (SCREEN_WIDTH / 8);
-							DragFromY = mouseY / (SCREEN_HEIGHT / 8);
+							int x = mouseX / (SCREEN_WIDTH / 8);
+							int y = mouseY / (SCREEN_HEIGHT / 8);
+							setDragFrom(x, y);
 
 							// Check if clicked on a piece and remember the piece
-							if (piecesBitBoard & (1ULL << (DragFromY*8 + DragFromX)) ) {
-								dragedPiece = curBoard[DragFromY*8 + DragFromX];
+							if (getCurBoard(x, y).type != 6) {
+								setDragedPiece();
 								dragging = 1;
 							}
 						}
@@ -236,7 +239,7 @@ int main( int, char* [] )
 				drawPieces();
 
 				if (dragging) {
-					drawDraggedPiece(dragedPiece.type, dragedPiece.color, mouseX, mouseY);
+					drawDraggedPiece(mouseX, mouseY);
 				}
 								
 

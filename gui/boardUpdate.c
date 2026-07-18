@@ -1,17 +1,16 @@
 #include "boardUpdate.h"
 
 Piece curBoard[64];
-uint64_t piecesBitBoard = 0xFFFF00000000FFFFULL;
 
-int DragFromX = 0;
-int DragFromY = 0;
+uint64_t piecesBitBoard = 0xFFFF00000000FFFF;
+Coordinates dragFrom = (Coordinates){0,0};
 Piece dragedPiece;
 
 void updateBoard(int toX, int toY){
-	piecesBitBoard ^= (1ULL << (DragFromY*8 + DragFromX));
+	piecesBitBoard ^= (1ULL << (dragFrom.y*8 + dragFrom.x));
 	piecesBitBoard |= (1ULL << (toY*8 + toX));
 
-	curBoard[DragFromY*8 + DragFromX] = (Piece){6, 0};
+	curBoard[dragFrom.y*8 + dragFrom.x] = (Piece){6, 0};
 	curBoard[toY*8 + toX] = dragedPiece;
 }
 
@@ -45,4 +44,25 @@ void initBoard(){
     for(int i = 48; i < 56; i++){
 		curBoard[i] = (Piece){5,0};
 	}
+}
+
+Piece getCurBoard(int x, int y){
+    return curBoard[y*8 + x];
+}
+
+void setDragedPiece(){
+    dragedPiece = getCurBoard(dragFrom.x,dragFrom.y);
+}
+
+Piece getDragedPiece(){
+    return dragedPiece;
+}
+
+Coordinates setDragFrom(int x, int y){
+    dragFrom.x = x;
+    dragFrom.y = y;
+}
+
+Coordinates getDragFrom(){
+    return dragFrom;
 }
