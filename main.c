@@ -3,27 +3,26 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "gui/boardUpdate.h"
+
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 640;
-char *curBoard = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
+int dragging = 0;
+int mouseX, mouseY;
 
 int init();
 int loadMedia();
 void closeWindow();
 
 void drawBoard();
-void drawPieces();
-void drawPiece();
-
+void drawPieces(); // Drawing the pieces on the board
+void drawPiece(); // Draw one piece
+void drawDraggedPiece(); // Draw the piece onto the cursor
 
 SDL_Surface* loadSurface( char* path );
-
-//The window we'll be rendering to
 SDL_Window* gWindow = NULL;
-
 SDL_Renderer* gRenderer = NULL;
-
 SDL_Texture* piecesTexture = NULL;
 
 int init()
@@ -40,11 +39,11 @@ int init()
 		//Create window
 		gWindow =
 			SDL_CreateWindow(
-				"SDL Tutorial"			,
-				SDL_WINDOWPOS_UNDEFINED	,
-				SDL_WINDOWPOS_UNDEFINED	,
-				SCREEN_WIDTH			,
-				SCREEN_HEIGHT			,
+				"Chess",
+				SDL_WINDOWPOS_UNDEFINED,
+				SDL_WINDOWPOS_UNDEFINED,
+				SCREEN_WIDTH,
+				SCREEN_HEIGHT,
 				SDL_WINDOW_SHOWN
 			);
 
@@ -113,65 +112,26 @@ void drawBoard(){
 }
 
 void drawPieces(){
-	int i = 0;
-	int j = 0;
-	int ind = 0;
-	while(!(i == 7 && j == 8)){
-		if(curBoard[ind] == '/'){
-			i++;
-			j = 0;
-		}else if(curBoard[ind] >= '0' && curBoard[ind] <= '9'){
-			j += curBoard[ind] - '0'; 
-		}else{
-			int color = 1;
-			char piece = curBoard[ind];
-			if(curBoard[ind] <= 'Z'){
-				color = 0;
-				piece += 'a' - 'A';
+	for(int i = 0;i < 8;i++){
+		for(int j = 0;j < 8;j++){
+			if(curBoard[i*8+j].type != 6){
+				if (dragging && i == DragFromY && j == DragFromX){
+					continue;
+				}
+				drawPiece(curBoard[i*8+j].type,curBoard[i*8+j].color,j,i);
 			}
-			if(piece == 'p'){
-				drawPiece(5,color,j,i);
-			}else if(piece == 'r'){
-				drawPiece(4,color,j,i);
-			}else if(piece == 'n'){
-				drawPiece(3,color,j,i);
-			}else if(piece == 'b'){
-				drawPiece(2,color,j,i);
-			}else if(piece == 'q'){
-				drawPiece(1,color,j,i);
-			}else{
-				drawPiece(0,color,j,i);
-			}
-			j++;
 		}
-
-		ind++;
 	}
-	//rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
-
-	// for(int i = 0;i < 8;i++){
-	// 	drawPiece(5, 0, i, 6);
-	// 	drawPiece(5, 1, i, 1);
-	// }
-	// for(int i = 0;i < 8;i+= 7){
-	// 	drawPiece(4, 1-i/7, 0, i);
-	// 	drawPiece(4, 1-i/7, 7, i);
-	// 	drawPiece(3, 1-i/7, 1, i);
-	// 	drawPiece(3, 1-i/7, 6, i);
-	// 	drawPiece(2, 1-i/7, 2, i);
-	// 	drawPiece(2, 1-i/7, 5, i);
-	// 	drawPiece(1, 1-i/7, 3, i);
-	// 	drawPiece(0, 1-i/7, 4, i);
-	// }
 }
 
 void drawPiece(int spriteX, int spriteY, int boardX, int boardY)
 {
+	int size = 107;
     SDL_Rect src = {
-        spriteX * 107,
-        spriteY * 107,
-        107,
-        107
+        spriteX * size,
+        spriteY * size,
+        size,
+        size
     };
 
     int s = SCREEN_WIDTH / 8;
@@ -186,16 +146,38 @@ void drawPiece(int spriteX, int spriteY, int boardX, int boardY)
     SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
 }
 
+void drawDraggedPiece(int spriteX, int spriteY, int mouseX, int mouseY)
+{
+    int squareSize = SCREEN_WIDTH / 8;
+
+	int size = 107;
+	SDL_Rect src = {
+        spriteX * size,
+        spriteY * size,
+        size,
+        size
+    };
+
+    SDL_Rect dst = {
+        mouseX - squareSize / 2,
+        mouseY - squareSize / 2,
+        squareSize,
+        squareSize
+    };
+
+    SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
+}
+
 int main( int, char* [] )
 {
 	// Start up SDL and create window
 	if	( !init() )	{
-		printf( "Failed to initialize!\n" );
+		printf("Failed to initialize!\n");
 	}
 	else	{
 		// Load media
 		if	( !loadMedia() )	{
-			printf( "Failed to load media!\n" );
+			printf("Failed to load media!\n");
 		}
 		else	{
 			int quit = 0;
@@ -203,24 +185,60 @@ int main( int, char* [] )
 			// Event handler
 			SDL_Event e;
 
+			initBoard();
+
 			// While application is running
 			while ( !quit )
 			{
 				// Handle events on queue
 				while ( SDL_PollEvent( &e ) != 0 )	{
-					// User requests quit
-					if	( e.type == SDL_QUIT )	{
+					if	(e.type == SDL_QUIT)	{
 						quit = 1;
+					}else if (e.type == SDL_MOUSEBUTTONDOWN){
+						 if (e.button.button == SDL_BUTTON_LEFT) {
+							// Get mouse and chessboard coordinates
+							mouseX = e.button.x;
+							mouseY = e.button.y;
+
+							DragFromX = mouseX / (SCREEN_WIDTH / 8);
+							DragFromY = mouseY / (SCREEN_HEIGHT / 8);
+
+							// Check if clicked on a piece and remember the piece
+							if (piecesBitBoard & (1ULL << (DragFromY*8 + DragFromX)) ) {
+								dragedPiece = curBoard[DragFromY*8 + DragFromX];
+								dragging = 1;
+							}
+						}
+					}else if(e.type == SDL_MOUSEMOTION){
+						// Update the mouse cooridnates
+						mouseX = e.motion.x;
+						mouseY = e.motion.y;
+					}else if(e.type == SDL_MOUSEBUTTONUP){
+						if (dragging) {
+							int toX = e.button.x / (SCREEN_WIDTH / 8);
+							int toY = e.button.y / (SCREEN_HEIGHT / 8);
+
+							// validate move TODO
+
+							updateBoard(toX,toY);
+
+							dragging = 0;
+						}
 					}
-                    
 				}
 
 				//Clear screen
                 SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
                 SDL_RenderClear( gRenderer );
 
+
 				drawBoard();
 				drawPieces();
+
+				if (dragging) {
+					drawDraggedPiece(dragedPiece.type, dragedPiece.color, mouseX, mouseY);
+				}
+								
 
 				// Update the surface
 				SDL_RenderPresent( gRenderer );
