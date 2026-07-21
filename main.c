@@ -4,12 +4,18 @@
 #include <string.h>
 
 #include "gui/boardUpdate.h"
+#include "gui/moves.h"
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 640;
 
+int move = 0;
+
 int dragging = 0;
+int selected = 0;
 int mouseX, mouseY;
+int highlightSize = 0;
+Coordinates highlight[256];
 
 int init();
 int loadMedia();
@@ -100,7 +106,7 @@ void closeWindow()
 void drawBoard(){
 	for(int i = 0;i < 8;i++){
 		for(int j = 0;j < 8;j++){
-			SDL_Rect fillRect = { SCREEN_WIDTH/8 * j, SCREEN_WIDTH/8 * i, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8 };
+			SDL_Rect fillRect = { SCREEN_WIDTH/8 * j, SCREEN_HEIGHT/8 * i, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8 };
 			if((i + j) % 2 == 0){
 				SDL_SetRenderDrawColor( gRenderer, 250, 160, 90, 255 );     
 			}else{
@@ -108,6 +114,16 @@ void drawBoard(){
 			}        
 			SDL_RenderFillRect( gRenderer, &fillRect );
 		}
+	}
+	if(!dragging && !selected) return;
+	for(int i = 0;i < highlightSize;i++){
+		SDL_Rect fillRect = { SCREEN_WIDTH/8 * highlight[i].x, SCREEN_HEIGHT/8 * highlight[i].y, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8 };
+		if((highlight[i].x + highlight[i].y) % 2 == 0){
+			SDL_SetRenderDrawColor( gRenderer, 255, 100, 40, 255 );  
+		}else{
+			SDL_SetRenderDrawColor( gRenderer, 195, 60, 10, 255 );
+		}
+		SDL_RenderFillRect( gRenderer, &fillRect );
 	}
 }
 
@@ -170,6 +186,15 @@ void drawDraggedPiece(int mouseX, int mouseY)
     SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
 }
 
+int validMove(int toX, int toY){
+	for(int i = 0;i < highlightSize;i++){
+		if(highlight[i].x == toX && highlight[i].y == toY){
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int main( int, char* [] )
 {
 	// Start up SDL and create window
@@ -204,12 +229,13 @@ int main( int, char* [] )
 
 							int x = mouseX / (SCREEN_WIDTH / 8);
 							int y = mouseY / (SCREEN_HEIGHT / 8);
-							setDragFrom(x, y);
 
 							// Check if clicked on a piece and remember the piece
-							if (getCurBoard(x, y).type != 6) {
+							if (!selected && getCurBoard(x, y).type != 6 && getCurBoard(x, y).color == move) {
+								setDragFrom(x, y);
 								setDragedPiece();
 								dragging = 1;
+								highlightSize = highlightPieceMoves(highlight, getDragedPiece(), getDragFrom(), 0, 1);
 							}
 						}
 					}else if(e.type == SDL_MOUSEMOTION){
@@ -217,16 +243,47 @@ int main( int, char* [] )
 						mouseX = e.motion.x;
 						mouseY = e.motion.y;
 					}else if(e.type == SDL_MOUSEBUTTONUP){
+						int toX = e.button.x / (SCREEN_WIDTH / 8);
+						int toY = e.button.y / (SCREEN_HEIGHT / 8);
 						if (dragging) {
-							int toX = e.button.x / (SCREEN_WIDTH / 8);
-							int toY = e.button.y / (SCREEN_HEIGHT / 8);
-
-							// validate move TODO
-
-							updateBoard(toX,toY);
-
+							int isValid = validMove(toX, toY);
+							if(isValid){
+								updateBoard(toX,toY);
+								move ^= 1;
+								Coordinates numOfMoves[256];
+								int ind = getAllMoves(move, numOfMoves, 1);
+								if(ind == 0){
+									printf("GAME OVER");
+								}
+								printf("Num of Moves: %d\n",ind);
+								selected = 0;
+							}else{
+								Coordinates dragFrom = getDragFrom();
+								if(dragFrom.x == toX && dragFrom.y == toY){
+									selected = 1;
+								}else{
+									selected = 0;
+								}
+							}
 							dragging = 0;
+						}else if(selected){
+							int isValid = validMove(toX, toY);
+							if(isValid){
+								Coordinates dragFrom = getDragFrom();
+								if(!(dragFrom.x == toX && dragFrom.y == toY)){
+									updateBoard(toX,toY);
+									move ^= 1;
+									Coordinates numOfMoves[256];
+									int ind = getAllMoves(move, numOfMoves, 1);
+									if(ind == 0){
+										printf("GAME OVER");
+									}
+									printf("Num of Moves: %d\n",ind);
+								}
+							}
+							selected = 0;
 						}
+						
 					}
 				}
 
@@ -254,4 +311,4 @@ int main( int, char* [] )
 
 	return 0;
 }
-// gcc main.c -I src/include -L src/lib -o main.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image
+// gcc main.c gui/boardUpdate.c gui/moves.c -I src/include -L src/lib -o main.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image

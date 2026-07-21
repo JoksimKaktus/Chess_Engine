@@ -2,16 +2,61 @@
 
 Piece curBoard[64];
 
-uint64_t piecesBitBoard = 0xFFFF00000000FFFF;
 Coordinates dragFrom = (Coordinates){0,0};
 Piece dragedPiece;
+int enPassantCol = -1;
+int castleRights[4] = {1,1,1,1};     // white kingside, white queenside, black kingside, black queenside
 
 void updateBoard(int toX, int toY){
-	piecesBitBoard ^= (1ULL << (dragFrom.y*8 + dragFrom.x));
-	piecesBitBoard |= (1ULL << (toY*8 + toX));
-
 	curBoard[dragFrom.y*8 + dragFrom.x] = (Piece){6, 0};
+
+    // delete the pawn when en passant
+    if(curBoard[toY*8 + toX].type == 6 && dragedPiece.type == 5 && dragFrom.x != toX){
+        curBoard[dragFrom.y*8 + toX] = (Piece){6, 0};
+    }
+
+    // Castling
+    if(dragedPiece.type == 0 && abs(dragFrom.x - toX) == 2){
+        if(dragFrom.x < toX){
+            curBoard[dragFrom.y*8 + 7] = (Piece){6,0};
+            curBoard[dragFrom.y*8 + 5] = (Piece){4, dragedPiece.color};
+            castleRights[2*dragedPiece.color] = 0;
+            castleRights[2*dragedPiece.color+1] = 0;
+        }else{
+            curBoard[dragFrom.y*8] = (Piece){6,0};
+            curBoard[dragFrom.y*8 + 3] = (Piece){4, dragedPiece.color};
+            castleRights[2*dragedPiece.color] = 0;
+            castleRights[2*dragedPiece.color+1] = 0;
+        }
+    }
+
 	curBoard[toY*8 + toX] = dragedPiece;
+
+    // en passant control
+    enPassantCol = -1;
+    if(dragedPiece.type == 5 && abs(dragFrom.y - toY) == 2){
+        enPassantCol = toX;
+    }
+
+    // removing castling rights
+    if(dragedPiece.type == 0){
+        castleRights[2*dragedPiece.color] = 0;
+        castleRights[2*dragedPiece.color+1] = 0;
+    }else if(dragedPiece.type == 4){
+        if(dragFrom.y == 0){
+            if(dragFrom.x == 0){
+                castleRights[3] = 0;
+            }else if(dragFrom.x == 7){
+                castleRights[2] = 0;
+            }
+        }else if(dragFrom.y == 7){
+            if(dragFrom.x == 0){
+                castleRights[1] = 0;
+            }else if(dragFrom.x == 7){
+                castleRights[0] = 0;
+            }
+        }
+    }
 }
 
 void initBoard(){
@@ -50,6 +95,10 @@ Piece getCurBoard(int x, int y){
     return curBoard[y*8 + x];
 }
 
+void setCurBoard(Coordinates pos, Piece piece){
+    curBoard[pos.y*8 + pos.x] = piece;
+}
+
 void setDragedPiece(){
     dragedPiece = getCurBoard(dragFrom.x,dragFrom.y);
 }
@@ -65,4 +114,12 @@ Coordinates setDragFrom(int x, int y){
 
 Coordinates getDragFrom(){
     return dragFrom;
+}
+
+int getEnPassantCol(){
+    return enPassantCol;
+}
+
+int* getCastleRights(){
+    return castleRights;
 }
