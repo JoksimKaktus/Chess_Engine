@@ -30,7 +30,7 @@ void updateBoard(int toX, int toY){
         }
     }
 
-	curBoard[toY*8 + toX] = dragedPiece;
+    curBoard[toY*8 + toX] = dragedPiece;
 
     // en passant control
     enPassantCol = -1;
@@ -74,7 +74,7 @@ void initBoard(){
     curBoard[7] = (Piece){4,1};
 
     for(int i = 8; i < 16; i++){
-		curBoard[i] = (Piece){5,1};
+		curBoard[i] = (Piece){6,1};
 	}
 
     curBoard[56] = (Piece){4,0};
@@ -87,7 +87,7 @@ void initBoard(){
     curBoard[63] = (Piece){4,0};
 
     for(int i = 48; i < 56; i++){
-		curBoard[i] = (Piece){5,0};
+		curBoard[i] = (Piece){6,0};
 	}
 }
 
@@ -101,6 +101,10 @@ void setCurBoard(Coordinates pos, Piece piece){
 
 void setDragedPiece(){
     dragedPiece = getCurBoard(dragFrom.x,dragFrom.y);
+}
+
+void setDragedPiecePromotion(Piece piece){
+    dragedPiece = piece;
 }
 
 Piece getDragedPiece(){

@@ -7,5 +7,6 @@
 
 int getAllMoves(int color, Coordinates allMoves[], int checkCheck);
 int highlightPieceMoves(Coordinates moves[], Piece piece, Coordinates pos, int startInd, int checkCheck);
+void gameOver(int color);
 
 #endif

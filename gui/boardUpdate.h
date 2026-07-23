@@ -21,6 +21,7 @@ void initBoard();
 Piece getCurBoard(int x, int y);
 void setCurBoard(Coordinates pos, Piece piece);
 void setDragedPiece();
+void setDragedPiecePromotion(Piece piece);
 Piece getDragedPiece();
 Coordinates setDragFrom(int x, int y);
 Coordinates getDragFrom();

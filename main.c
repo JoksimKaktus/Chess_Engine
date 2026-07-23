@@ -17,6 +17,10 @@ int mouseX, mouseY;
 int highlightSize = 0;
 Coordinates highlight[256];
 
+int promotionPending = 0;
+Coordinates promotionSquare;
+Piece promotionPiece;
+
 int init();
 int loadMedia();
 void closeWindow();
@@ -25,6 +29,10 @@ void drawBoard();
 void drawPieces(); // Drawing the pieces on the board
 void drawPiece(); // Draw one piece
 void drawDraggedPiece(); // Draw the piece onto the cursor
+void drawPromotion();
+int validMove(int toX, int toY);
+void makeMove(int toX, int toY);
+void findPromotionPiece(int x, int y);
 
 SDL_Surface* loadSurface( char* path );
 SDL_Window* gWindow = NULL;
@@ -186,6 +194,24 @@ void drawDraggedPiece(int mouseX, int mouseY)
     SDL_RenderCopy(gRenderer, piecesTexture, &src, &dst);
 }
 
+void drawPromotion(){
+	for(int i = 2;i < 5;i++){
+		for(int j = 1; j < 7;j++){
+			SDL_Rect fillRect = { SCREEN_WIDTH/8 * j, SCREEN_HEIGHT/8 * i, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8 };
+			if(i == 3 && j != 1 && j != 6){
+				SDL_SetRenderDrawColor( gRenderer, 180, 180, 180, 255 );
+			}else{
+				SDL_SetRenderDrawColor( gRenderer, 230, 230, 230, 255 );
+			}
+			SDL_RenderFillRect( gRenderer, &fillRect );
+		}
+	}
+	drawPiece(1, move, 2, 3);
+	drawPiece(2, move, 3, 3);
+	drawPiece(3, move, 4, 3);
+	drawPiece(4, move, 5, 3);
+}
+
 int validMove(int toX, int toY){
 	for(int i = 0;i < highlightSize;i++){
 		if(highlight[i].x == toX && highlight[i].y == toY){
@@ -193,6 +219,32 @@ int validMove(int toX, int toY){
 		}
 	}
 	return 0;
+}
+
+void makeMove(int toX, int toY){
+	if(getDragedPiece().type == 5 && (toY == 0 || toY == 7)){ // Promotion
+		promotionPending = 1;
+		promotionSquare = (Coordinates){toX, toY};
+		selected = 0;
+		dragging = 0;
+		return;
+	}
+	updateBoard(toX,toY);
+	Coordinates numOfMoves[256];
+	move ^= 1;
+	int ind = getAllMoves(move, numOfMoves, 1);
+	if(ind == 0){
+		printf("GAME OVER\n");
+		gameOver(move^1);
+	}
+}
+
+void findPromotionPiece(int x, int y){
+	if(x > 1 && x < 6 && y == 3){
+		promotionPending = 0;
+		setDragedPiecePromotion((Piece){x-1,move});
+		makeMove(promotionSquare.x, promotionSquare.y);
+	}
 }
 
 int main( int, char* [] )
@@ -217,73 +269,75 @@ int main( int, char* [] )
 			// While application is running
 			while ( !quit )
 			{
-				// Handle events on queue
-				while ( SDL_PollEvent( &e ) != 0 )	{
-					if	(e.type == SDL_QUIT)	{
-						quit = 1;
-					}else if (e.type == SDL_MOUSEBUTTONDOWN){
-						 if (e.button.button == SDL_BUTTON_LEFT) {
-							// Get mouse and chessboard coordinates
+				if(promotionPending){
+					while ( SDL_PollEvent( &e ) != 0 )	{
+						if	(e.type == SDL_QUIT)	{
+							quit = 1;
+						}else if(e.type == SDL_MOUSEBUTTONUP){
 							mouseX = e.button.x;
 							mouseY = e.button.y;
 
 							int x = mouseX / (SCREEN_WIDTH / 8);
 							int y = mouseY / (SCREEN_HEIGHT / 8);
 
-							// Check if clicked on a piece and remember the piece
-							if (!selected && getCurBoard(x, y).type != 6 && getCurBoard(x, y).color == move) {
-								setDragFrom(x, y);
-								setDragedPiece();
-								dragging = 1;
-								highlightSize = highlightPieceMoves(highlight, getDragedPiece(), getDragFrom(), 0, 1);
-							}
+							findPromotionPiece(x, y);
 						}
-					}else if(e.type == SDL_MOUSEMOTION){
-						// Update the mouse cooridnates
-						mouseX = e.motion.x;
-						mouseY = e.motion.y;
-					}else if(e.type == SDL_MOUSEBUTTONUP){
-						int toX = e.button.x / (SCREEN_WIDTH / 8);
-						int toY = e.button.y / (SCREEN_HEIGHT / 8);
-						if (dragging) {
-							int isValid = validMove(toX, toY);
-							if(isValid){
-								updateBoard(toX,toY);
-								move ^= 1;
-								Coordinates numOfMoves[256];
-								int ind = getAllMoves(move, numOfMoves, 1);
-								if(ind == 0){
-									printf("GAME OVER");
+					}
+				}else{
+					// Handle events on queue
+					while ( SDL_PollEvent( &e ) != 0 )	{
+						if	(e.type == SDL_QUIT)	{
+							quit = 1;
+						}else if (e.type == SDL_MOUSEBUTTONDOWN){
+							if (e.button.button == SDL_BUTTON_LEFT) {
+								// Get mouse and chessboard coordinates
+								mouseX = e.button.x;
+								mouseY = e.button.y;
+
+								int x = mouseX / (SCREEN_WIDTH / 8);
+								int y = mouseY / (SCREEN_HEIGHT / 8);
+
+								// Check if clicked on a piece and remember the piece
+								if (!selected && getCurBoard(x, y).type != 6 && getCurBoard(x, y).color == move) {
+									setDragFrom(x, y);
+									setDragedPiece();
+									dragging = 1;
+									highlightSize = highlightPieceMoves(highlight, getDragedPiece(), getDragFrom(), 0, 1);
 								}
-								printf("Num of Moves: %d\n",ind);
-								selected = 0;
-							}else{
-								Coordinates dragFrom = getDragFrom();
-								if(dragFrom.x == toX && dragFrom.y == toY){
-									selected = 1;
-								}else{
+							}
+						}else if(e.type == SDL_MOUSEMOTION){
+							// Update the mouse cooridnates
+							mouseX = e.motion.x;
+							mouseY = e.motion.y;
+						}else if(e.type == SDL_MOUSEBUTTONUP){
+							int toX = e.button.x / (SCREEN_WIDTH / 8);
+							int toY = e.button.y / (SCREEN_HEIGHT / 8);
+							if (dragging) {
+								int isValid = validMove(toX, toY);
+								if(isValid){
+									makeMove(toX, toY);
 									selected = 0;
-								}
-							}
-							dragging = 0;
-						}else if(selected){
-							int isValid = validMove(toX, toY);
-							if(isValid){
-								Coordinates dragFrom = getDragFrom();
-								if(!(dragFrom.x == toX && dragFrom.y == toY)){
-									updateBoard(toX,toY);
-									move ^= 1;
-									Coordinates numOfMoves[256];
-									int ind = getAllMoves(move, numOfMoves, 1);
-									if(ind == 0){
-										printf("GAME OVER");
+								}else{
+									Coordinates dragFrom = getDragFrom();
+									if(dragFrom.x == toX && dragFrom.y == toY){
+										selected = 1;
+									}else{
+										selected = 0;
 									}
-									printf("Num of Moves: %d\n",ind);
 								}
+								dragging = 0;
+							}else if(selected){
+								int isValid = validMove(toX, toY);
+								if(isValid){
+									Coordinates dragFrom = getDragFrom();
+									if(!(dragFrom.x == toX && dragFrom.y == toY)){
+										makeMove(toX, toY);
+									}
+								}
+								selected = 0;
 							}
-							selected = 0;
+							
 						}
-						
 					}
 				}
 
@@ -294,6 +348,9 @@ int main( int, char* [] )
 
 				drawBoard();
 				drawPieces();
+				if(promotionPending){
+					drawPromotion();
+				}
 
 				if (dragging) {
 					drawDraggedPiece(mouseX, mouseY);
@@ -312,3 +369,11 @@ int main( int, char* [] )
 	return 0;
 }
 // gcc main.c gui/boardUpdate.c gui/moves.c -I src/include -L src/lib -o main.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image
+
+/*
+Stalemate
+Dead position
+50 - rules
+3 times same pos
+Time
+*/

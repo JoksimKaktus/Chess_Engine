@@ -125,10 +125,24 @@ int highlightPieceMoves(Coordinates moves[], Piece piece, Coordinates pos, int s
         }
     }
     if(checkCheck){
-        for(int i = startInd;i < ind;i++){
+        for(int i = startInd;i < ind;i++){            
+            int isEnPassant = 0;
+            if(getCurBoard(moves[i].x, moves[i].y).type == 6 && piece.type == 5 && pos.x != moves[i].x){ // En passant
+                setCurBoard((Coordinates){moves[i].x, pos.y}, (Piece){6, 0});
+                isEnPassant = 1;
+            }
             setCurBoard(pos, (Piece){6,0});
             Piece removed = getCurBoard(moves[i].x, moves[i].y);
             setCurBoard(moves[i], piece);
+            if(piece.type == 0 && abs(moves[i].x - pos.x) == 2){ // Castling
+                if(pos.x < moves[i].x){
+                    setCurBoard((Coordinates){7, pos.y}, (Piece){6, 0});
+                    setCurBoard((Coordinates){5, pos.y}, (Piece){0, piece.color});
+                }else{
+                    setCurBoard((Coordinates){0, pos.y}, (Piece){6, 0});
+                    setCurBoard((Coordinates){3, pos.y}, (Piece){0, piece.color});
+                }
+            }
             Coordinates allMovesOpponent[256];
             int size = getAllMoves(piece.color ^ 1, allMovesOpponent, 0);
             int flag = 0;
@@ -138,8 +152,20 @@ int highlightPieceMoves(Coordinates moves[], Piece piece, Coordinates pos, int s
                     break;
                 }
             }
+            if(isEnPassant){
+                setCurBoard((Coordinates){moves[i].x, pos.y}, (Piece){5, piece.color ^ 1});
+            }
             setCurBoard(moves[i], removed);
             setCurBoard(pos, piece);
+            if(piece.type == 0 && abs(moves[i].x - pos.x) == 2){ // castling
+                if(pos.x < moves[i].x){
+                    setCurBoard((Coordinates){7, pos.y}, (Piece){4, piece.color});
+                    setCurBoard((Coordinates){5, pos.y}, (Piece){6, 0});
+                }else{
+                    setCurBoard((Coordinates){0, pos.y}, (Piece){4, piece.color});
+                    setCurBoard((Coordinates){3, pos.y}, (Piece){6, 0});
+                }
+            }
             if(flag){
                 ind--;
                 moves[i] = moves[ind];
@@ -148,4 +174,28 @@ int highlightPieceMoves(Coordinates moves[], Piece piece, Coordinates pos, int s
         }
     }
     return ind;
+}
+
+void gameOver(int color){
+    Coordinates allMoves[256];
+    int ind = 0;
+    for(int i = 0;i < 8;i++){
+        for(int j = 0;j < 8;j++){
+            Piece piece = getCurBoard(j,i);
+            if(piece.type != 6 && piece.color == color){
+                ind = highlightPieceMoves(allMoves, piece, (Coordinates){j,i}, ind, 0);
+            }
+        }
+    }
+    for(int i = 0;i < ind;i++){
+        if(getCurBoard(allMoves[i].x, allMoves[i].y).type == 0){
+            if(color == 0){
+                printf("WHITE WON\n");
+            }else{
+                printf("BLACK WON\n");
+            }
+            return;
+        }
+    }
+    printf("DRAW\n");
 }
